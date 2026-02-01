@@ -13,6 +13,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'StudyLocal - Find Neighbourhood Tutors',
   description: 'Connect with verified tutors in your local area. No commission, COD only.',
+  verification: {
+    google: 'TYc7oU50kCRvacQe4ygPnBN_v_-VT4Usuvd9xzw11VM',
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -28,9 +31,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="google-site-verification" content="TYc7oU50kCRvacQe4ygPnBN_v_-VT4Usuvd9xzw11VM" />
-      </head>
       <body className={`${inter.variable} min-h-[100dvh]`}>
         <Providers>
           <div className="flex min-h-[100dvh] flex-col">

@@ -13,11 +13,17 @@ import {
     Check,
     Trash2,
     Mic,
+    Handshake,
 } from 'lucide-react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'react-toastify';
 import { useChat } from '@/hooks/useChat';
 import Image from 'next/image';
+import {
+    getEnrolmentForChat,
+    createEnrolment,
+    confirmEnrolment
+} from '@/lib/actions/enrolment';
 
 
 declare global {
@@ -51,6 +57,9 @@ export default function ChatPanel({
     const bottomRef = useRef<HTMLDivElement>(null);
     const recognitionRef = useRef<any>(null);
     const isFirstLoad = useRef(true);
+
+    const [enrolment, setEnrolment] = useState<any>(null);
+    const [isEnrolling, setIsEnrolling] = useState(false);
 
     // Prefer DB user data, fallback to Auth0
     const userId = currentUser?.auth0Id ?? user?.sub ?? '';
@@ -147,6 +156,54 @@ export default function ChatPanel({
         recognition.start();
     };
 
+    useEffect(() => {
+        const fetchEnrolment = async () => {
+            if (!roomId || !userId) return;
+            const parts = roomId.split('-');
+            const roomTutorId = parts[0];
+            const roomStudentId = roomId.substring(roomTutorId.length + 1).replace(/_/g, '|');
+
+            const data = await getEnrolmentForChat(roomTutorId, roomStudentId);
+            setEnrolment(data);
+        };
+        fetchEnrolment();
+    }, [roomId, userId]);
+
+    const handleEnrol = async () => {
+        if (isEnrolling) return;
+        setIsEnrolling(true);
+
+        const parts = roomId.split('-');
+        const roomTutorId = parts[0];
+        const roomStudentId = roomId.substring(roomTutorId.length + 1).replace(/_/g, '|');
+
+        try {
+            if (!enrolment) {
+                // Create pending deal
+                const res = await createEnrolment(roomTutorId, roomStudentId);
+                if (res.success) {
+                    setEnrolment(res.enrolment);
+                    sendMessage(`🤝 I've initiated a deal! Please confirm to finalize.`);
+                    toast.success('Deal initiated!');
+                } else {
+                    toast.error(res.message || 'Failed to initiate deal');
+                }
+            } else if (enrolment.status === 'pending') {
+                // Confirm deal
+                const res = await confirmEnrolment(enrolment._id);
+                if (res.success) {
+                    setEnrolment(res.enrolment);
+                    sendMessage(`✅ Deal Confirmed! We are now officially connected.`);
+                    toast.success('Deal confirmed!');
+                }
+            }
+        } catch (error) {
+            toast.error('Something went wrong');
+        } finally {
+            setIsEnrolling(false);
+        }
+    };
+
     /* Loading */
     if (isLoading) {
         return (
@@ -231,6 +288,32 @@ export default function ChatPanel({
                             <p className="text-xs text-gray-500">
                                 Online
                             </p>
+                        </div>
+
+                        {/* Deal Tracking Button */}
+                        <div className="flex items-center gap-2">
+                            {enrolment?.status === 'confirmed' ? (
+                                <div className="flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-xs font-bold text-green-700">
+                                    <Check className="h-3.5 w-3.5" />
+                                    Deal Done
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleEnrol}
+                                    disabled={isEnrolling}
+                                    className={`
+                                        flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition
+                                        ${enrolment?.status === 'pending'
+                                            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                            : 'bg-green-600 text-white hover:bg-green-700'
+                                        }
+                                        disabled:opacity-50
+                                    `}
+                                >
+                                    <Handshake className="h-3.5 w-3.5" />
+                                    {isEnrolling ? '...' : (enrolment?.status === 'pending' ? 'Confirm Deal' : 'Start Deal')}
+                                </button>
+                            )}
                         </div>
                     </header>
 

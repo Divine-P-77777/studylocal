@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import AdminStats from '@/components/admin/AdminStats';
 import TutorActions from '@/components/admin/TutorActions';
 
@@ -32,7 +33,15 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ pendingTutors, stats }: AdminDashboardProps) {
     return (
         <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Pending Approvals</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Pending Approvals</h1>
+                <Link
+                    href="/admin/tutor"
+                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition shadow-sm"
+                >
+                    Manage Tutors
+                </Link>
+            </div>
 
             <AdminStats
                 totalTutors={stats.total}

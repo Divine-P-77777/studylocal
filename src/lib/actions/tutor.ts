@@ -77,3 +77,17 @@ export async function registerTutor(prevState: any, formData: FormData) {
         return { success: false, message: error.message || 'Something went wrong.' };
     }
 }
+
+export async function updateTutorStatus(tutorId: string, status: 'pending' | 'approved' | 'rejected') {
+    try {
+        await dbConnect();
+        const tutor = await TutorProfile.findByIdAndUpdate(tutorId, { marketingStatus: status }, { new: true });
+        if (!tutor) {
+            return { success: false, message: 'Tutor not found' };
+        }
+        return { success: true, message: `Status updated to ${status}` };
+    } catch (error: any) {
+        console.error('Update Status Error:', error);
+        return { success: false, message: error.message || 'Something went wrong.' };
+    }
+}

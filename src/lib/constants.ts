@@ -6,4 +6,4 @@ export const SUBJECTS_LIST = [
     "Sociology", "Political Science", "General Knowledge", "Art & Craft", "Music"
 ];
 
-export const ADMIN_EMAILS = ['admin@studylocal.com', 'dynamicphillic77777@gmail.com'];
+export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').filter(email => email.trim() !== '');
