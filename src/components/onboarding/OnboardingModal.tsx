@@ -3,16 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { toast } from 'react-toastify';
-import { User, GraduationCap, School } from 'lucide-react';
+import { User, GraduationCap, School, Camera, Upload, Loader2 } from 'lucide-react';
 import { updateUser, getUser } from '@/lib/actions/user';
+import Image from 'next/image';
 
 export default function OnboardingModal() {
     const { user, isLoading } = useUser();
     const [isOpen, setIsOpen] = useState(false);
-    const [step, setStep] = useState<1 | 2>(1);
+    const [step, setStep] = useState<1 | 2 | 3>(1); // Added Step 3
     const [role, setRole] = useState<'student' | 'tutor' | null>(null);
     const [fullName, setFullName] = useState('');
+    const [photoUrl, setPhotoUrl] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         const checkUser = async () => {
@@ -23,6 +26,7 @@ export default function OnboardingModal() {
                 if (!dbUser || !dbUser.isProfileComplete) {
                     setIsOpen(true);
                     if (user.name) setFullName(user.name);
+                    if (user.picture) setPhotoUrl(user.picture);
                 }
             }
         };
@@ -32,6 +36,49 @@ export default function OnboardingModal() {
         }
     }, [user, isLoading]);
 
+    const uploadToCloudinary = async (file: File) => {
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+        if (!cloudName || !uploadPreset) {
+            toast.error('Cloudinary config missing');
+            return null;
+        }
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            const res = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                { method: 'POST', body: formData }
+            );
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error?.message || 'Upload failed');
+
+            return data.secure_url;
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to upload image");
+            return null;
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const url = await uploadToCloudinary(file);
+        if (url) {
+            setPhotoUrl(url);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!role || !fullName.trim()) return;
 
@@ -40,7 +87,7 @@ export default function OnboardingModal() {
             await updateUser(user!.sub!, {
                 email: user!.email!,
                 fullName: fullName,
-                photoUrl: user!.picture || undefined,
+                photoUrl: photoUrl || user!.picture || undefined,
                 role: role,
                 isProfileComplete: true
             });
@@ -74,12 +121,14 @@ export default function OnboardingModal() {
                     {/* Header */}
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">
-                            {step === 1 ? "Choose your role" : "Complete Profile"}
+                            {step === 1 ? "Choose your role" : step === 2 ? "Your Name" : "Profile Photo"}
                         </h2>
                         <p className="text-gray-500 mt-2 text-sm">
                             {step === 1
                                 ? "How will you be using StudyLocal?"
-                                : "One last step to get started."}
+                                : step === 2
+                                    ? "How should we address you?"
+                                    : "Add a face to your name (Optional)"}
                         </p>
                     </div>
 
@@ -89,8 +138,8 @@ export default function OnboardingModal() {
                             <button
                                 onClick={() => setRole('student')}
                                 className={`w-full flex items-center p-4 border-2 rounded-xl transition-all ${role === 'student'
-                                        ? 'border-green-600 bg-green-50'
-                                        : 'border-gray-200 hover:border-green-200'
+                                    ? 'border-green-600 bg-green-50'
+                                    : 'border-gray-200 hover:border-green-200'
                                     }`}
                             >
                                 <div className={`p-3 rounded-full ${role === 'student' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -105,8 +154,8 @@ export default function OnboardingModal() {
                             <button
                                 onClick={() => setRole('tutor')}
                                 className={`w-full flex items-center p-4 border-2 rounded-xl transition-all ${role === 'tutor'
-                                        ? 'border-green-600 bg-green-50'
-                                        : 'border-gray-200 hover:border-green-200'
+                                    ? 'border-green-600 bg-green-50'
+                                    : 'border-gray-200 hover:border-green-200'
                                     }`}
                             >
                                 <div className={`p-3 rounded-full ${role === 'tutor' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -128,7 +177,7 @@ export default function OnboardingModal() {
                         </div>
                     )}
 
-                    {/* Step 2: Details */}
+                    {/* Step 2: Name */}
                     {step === 2 && (
                         <div className="space-y-6">
                             <div>
@@ -149,14 +198,6 @@ export default function OnboardingModal() {
                                 </div>
                             </div>
 
-                            {/* Info Box */}
-                            <div className="bg-blue-50 p-4 rounded-lg flex gap-3 text-sm text-blue-700">
-                                <div className="shrink-0 font-bold">ℹ️</div>
-                                <p>
-                                    Your role <strong>({role === 'student' ? 'Student' : 'Tutor'})</strong> and name cannot be easily changed later.
-                                </p>
-                            </div>
-
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setStep(1)}
@@ -165,11 +206,63 @@ export default function OnboardingModal() {
                                     Back
                                 </button>
                                 <button
-                                    onClick={handleSubmit}
-                                    disabled={isSubmitting || !fullName.trim()}
+                                    onClick={() => setStep(3)}
+                                    disabled={!fullName.trim()}
                                     className="flex-1 bg-green-600 text-white py-3 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50"
                                 >
-                                    {isSubmitting ? 'Saving...' : 'Finish Setup'}
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Photo */}
+                    {step === 3 && (
+                        <div className="space-y-6">
+                            <div className="flex flex-col items-center">
+                                <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-gray-100 shadow-md mb-4 bg-gray-100">
+                                    {photoUrl ? (
+                                        <Image src={photoUrl} alt="Profile" fill className="object-cover" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-gray-400">
+                                            <User className="h-16 w-16" />
+                                        </div>
+                                    )}
+
+                                    {isUploading && (
+                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    <Camera className="w-4 h-4 mr-2" />
+                                    Change Photo
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                                </label>
+                            </div>
+
+                            <div className="bg-blue-50 p-4 rounded-lg flex gap-3 text-sm text-blue-700 text-left">
+                                <div className="shrink-0 font-bold">ℹ️</div>
+                                <p>
+                                    Your profile photo helps build trust with {role === 'student' ? 'tutors' : 'students'}.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setStep(2)}
+                                    className="flex-1 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting || isUploading}
+                                    className="flex-1 bg-green-600 text-white py-3 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? 'Finishing...' : 'Complete Profile'}
                                 </button>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Auth0Provider } from '@auth0/nextjs-auth0/client';
-import { ReactLenis } from '@studio-freight/react-lenis';
+import { ReactLenis } from 'lenis/react';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

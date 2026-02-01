@@ -1,8 +1,9 @@
-'use client';
-
+"use client"
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { User, LogOut } from 'lucide-react';
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { getUser } from '@/lib/actions/user';
 
 
 interface ProfileProps {
@@ -16,16 +17,31 @@ interface ProfileProps {
 
 export default function Profile() {
     const { user, isLoading } = useUser();
+    const [dbUser, setDbUser] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            if (user?.sub) {
+                const data = await getUser(user.sub);
+                setDbUser(data);
+            }
+        };
+        if (user) fetchUser();
+    }, [user]);
+
+    const displayName = dbUser?.fullName || user?.name || 'Welcome!';
+    const displayImage = dbUser?.photoUrl || user?.picture;
+    const displayEmail = dbUser?.email || user?.email;
 
     return (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 max-w-md w-full mx-auto">
             <div className="bg-gradient-to-r from-green-600 to-teal-500 h-32 relative">
                 <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 p-1.5 bg-white rounded-full">
                     <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100">
-                        {user?.picture ? (
+                        {displayImage ? (
                             <Image
-                                src={user?.picture}
-                                alt={user?.name || 'User'}
+                                src={displayImage}
+                                alt={displayName}
                                 fill
                                 className="object-cover"
                             />
@@ -39,8 +55,8 @@ export default function Profile() {
             </div>
 
             <div className="pt-20 pb-8 px-8 text-center">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{user?.name || 'Welcome!'}</h1>
-                <p className="text-gray-500 font-medium mb-6">{user?.email}</p>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
+                <p className="text-gray-500 font-medium mb-6">{displayEmail}</p>
 
                 <div className="space-y-4">
                     <div className="bg-green-50 rounded-xl p-4 border border-green-100 text-left">

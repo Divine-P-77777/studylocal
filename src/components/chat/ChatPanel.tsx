@@ -32,6 +32,7 @@ interface ChatPanelProps {
     title?: string;
     userRole?: string;
     initialMessages?: any[];
+    currentUser?: any; // Added prop
 }
 
 export default function ChatPanel({
@@ -39,6 +40,7 @@ export default function ChatPanel({
     title = 'Conversation',
     userRole,
     initialMessages = [],
+    currentUser,
 }: ChatPanelProps) {
     const { user, isLoading } = useUser();
 
@@ -50,8 +52,9 @@ export default function ChatPanel({
     const recognitionRef = useRef<any>(null);
     const isFirstLoad = useRef(true);
 
-    const userId = user?.sub ?? '';
-    const userName = user?.name ?? user?.email ?? 'Anonymous';
+    // Prefer DB user data, fallback to Auth0
+    const userId = currentUser?.auth0Id ?? user?.sub ?? '';
+    const userName = currentUser?.fullName ?? user?.name ?? user?.email ?? 'Anonymous';
 
     const hasSpeechSupport =
         typeof window !== 'undefined' &&
