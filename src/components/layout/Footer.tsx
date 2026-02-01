@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Search, PlusCircle, User, AlertCircle } from 'lucide-react';
+import { Home, Search, PlusCircle, User, AlertCircle, MessageCircle, FileText } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 export default function Footer() {
@@ -12,8 +12,8 @@ export default function Footer() {
     const navItems = [
         { name: 'Home', href: '/', icon: Home },
         { name: 'Search', href: '/tutors', icon: Search },
-        { name: 'Join', href: '/tutor-registration', icon: PlusCircle },
-        { name: 'Issues', href: '/complaints', icon: AlertCircle },
+
+        { name: 'Chat', href: '/chat', icon: MessageCircle },
     ];
 
     return (
@@ -41,7 +41,7 @@ export default function Footer() {
                                 Privacy Policy
                             </Link>
                             <Link href="/terms" className="text-gray-500 hover:text-green-600 text-sm transition font-medium">
-                                Terms of Service
+                                Terms & Conditions
                             </Link>
                             <Link href="/complaints" className="text-gray-500 hover:text-green-600 text-sm transition font-medium flex items-center gap-1">
                                 <AlertCircle className="w-4 h-4" />

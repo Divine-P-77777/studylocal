@@ -94,6 +94,8 @@ export default async function ChatPage(props: { params: Promise<{ roomId: string
         dbUser = await getUser(currentUserId);
     }
 
+    const isTutorOfThisRoom = tutorProfile && tutorProfile.auth0Id === currentUserId;
+
     return (
         <div className="h-screen w-full">
             <ChatPanel
@@ -102,6 +104,7 @@ export default async function ChatPage(props: { params: Promise<{ roomId: string
                 userRole={chatRole}
                 initialMessages={initialMessages}
                 currentUser={dbUser}
+                isTutorOfThisRoom={!!isTutorOfThisRoom}
             />
         </div>
     );

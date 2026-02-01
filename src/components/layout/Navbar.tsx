@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth0 } from '@/hooks/useAuth0';
-import { Menu, X, Download, User as UserIcon, LogOut, ArrowRight, MessageCircle } from 'lucide-react';
+import { Menu, X, Download, User as UserIcon, LogOut, MessageCircle, AlertCircle, FileText, Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
@@ -142,30 +142,41 @@ export default function Navbar() {
             {isOpen && (
                 <div className="sm:hidden bg-white border-t border-gray-100">
                     <div className="pt-2 pb-3 space-y-1 px-2">
-                        <Link href="/tutors" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-brand-600 hover:bg-brand-50 rounded-md">
+                        <Link href="/tutors" className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md">
+                            <Search className="w-5 h-5" />
                             Find Tutors
                         </Link>
+                        <Link href="/dashboard" className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md">
+                            <UserIcon className="w-5 h-5" />
+                            Profile
+                        </Link>
+                        <Link href="/chat" className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md">
+                            <MessageCircle className="w-5 h-5" />
+                            Chat
+                        </Link>
+                        <Link href="/complaints" className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md">
+                            <AlertCircle className="w-5 h-5" />
+                            Complaint
+                        </Link>
+                        <Link href="/terms" className="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md">
+                            <FileText className="w-5 h-5" />
+                            Terms & Conditions
+                        </Link>
                         {!isLoading && !user && (
-                            <button
-                                onClick={() => loginWithRedirect()}
+                            <Link href="/auth/login"
                                 className="w-full text-left flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md"
                             >
                                 <UserIcon className="w-4 h-4" />
                                 Login
-                            </button>
+                            </Link>
                         )}
                         {!isLoading && user && (
-                            <>
-                                <Link href="/dashboard" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-brand-600 hover:bg-brand-50 rounded-md">
-                                    Profile
-                                </Link>
-                                <button
-                                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                                    className="w-full text-left block px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md"
-                                >
-                                    Logout
-                                </button>
-                            </>
+                            <Link href="/auth/logout"
+                                className="w-full text-left flex items-center gap-2 px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                Logout
+                            </Link>
                         )}
                     </div>
                 </div>
