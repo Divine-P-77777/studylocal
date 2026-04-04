@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    image: dynamicphillic/studylocal-api:latest
+    container_name: studylocal_backend
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - studynetworking
+    # We do NOT export ports to the host natively, only Caddy will expose ports to the outside world.
+
+  caddy:
+    image: caddy:alpine
+    container_name: caddy_proxy
+    restart: always
+    ports:
+      - "80:80"    # HTTP
+      - "443:443"  # HTTPS
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data   # Persists SSL certificates!! Critical!!
+      - caddy_config:/config
+    networks:
+      - studynetworking
+    depends_on:
+      - backend
+
+networks:
+  studynetworking:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

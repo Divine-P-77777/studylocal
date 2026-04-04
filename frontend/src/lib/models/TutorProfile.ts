@@ -50,8 +50,13 @@ const TutorProfileSchema: Schema = new Schema(
     { timestamps: true }
 );
 
+// Fix: Force Mongoose to flush cached model during HMR so it picks up the correct 'TutorProfile' collection name
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.TutorProfile;
+}
+
 // Prevent overwrite on HMR
 const TutorProfile: Model<ITutorProfile> =
-    mongoose.models.TutorProfile || mongoose.model<ITutorProfile>('TutorProfile', TutorProfileSchema);
+    mongoose.models.TutorProfile || mongoose.model<ITutorProfile>('TutorProfile', TutorProfileSchema, 'TutorProfile');
 
 export default TutorProfile;

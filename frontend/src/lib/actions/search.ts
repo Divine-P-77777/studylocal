@@ -1,13 +1,7 @@
 'use server';
 
-import dbConnect from '@/lib/db/connect';
-import TutorProfile from '@/lib/models/TutorProfile';
-import { buildTutorQuery, TutorFilterParams } from '@/lib/utils/filter';
-import { getCache, setCache } from '@/lib/cache';
+import { api } from '@/lib/api-client';
 
-const TUTOR_TTL = 300; // 5 minutes
-
-// ── Types ────────────────────────────────────────────────────────────────────
 export interface PaginatedTutors {
     tutors: any[];
     pagination: {
@@ -18,37 +12,25 @@ export interface PaginatedTutors {
     };
 }
 
-// ── Paginated list (no cache — filters change constantly) ─────────────────────
+// ── Paginated list ─────────────────────
 export async function getTutors(
-    filters: TutorFilterParams,
+    filters: any,
     page: number = 1,
     limit: number = 10
 ): Promise<PaginatedTutors> {
     try {
-        await dbConnect();
-        const query = buildTutorQuery(filters);
-        const skip = (page - 1) * limit;
+        const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+            ...(filters.subject && { subject: filters.subject }),
+            ...(filters.classRange && { classRange: filters.classRange }),
+            ...(filters.area && { area: filters.area }),
+        });
 
-        const [tutors, total] = await Promise.all([
-            TutorProfile.find(query)
-                .select('fullName photoUrl subjects classRange area monthlyFee tuitionMode')
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            TutorProfile.countDocuments(query),
-        ]);
-
-        return {
-            tutors: tutors.map((t: any) => ({ ...t, _id: t._id.toString() })),
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
-        };
+        // Call FastAPI instead of direct MongoDB
+        return await api.get(`/tutor?${queryParams.toString()}`);
     } catch (error) {
-        console.error('[search] Failed to fetch tutors:', error);
+        console.error('[Search Migration] Failed to fetch tutors:', error);
         return {
             tutors: [],
             pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
@@ -59,18 +41,8 @@ export async function getTutors(
 // ── Single tutor by MongoDB _id ───────────────────────────────────────────────
 export async function getTutorById(id: string) {
     if (!id) return null;
-    const cacheKey = `tutor:id:${id}`;
-
-    const cached = await getCache<any>(cacheKey);
-    if (cached) return cached;
-
     try {
-        await dbConnect();
-        const tutor = await TutorProfile.findById(id).lean();
-        if (!tutor) return null;
-        const result = { ...tutor, _id: tutor._id.toString() };
-        await setCache(cacheKey, result, TUTOR_TTL);
-        return result;
+        return await api.get(`/tutor/${id}`);
     } catch {
         return null;
     }
@@ -79,18 +51,8 @@ export async function getTutorById(id: string) {
 // ── Single tutor by Auth0 ID ──────────────────────────────────────────────────
 export async function getTutorByAuth0Id(auth0Id: string) {
     if (!auth0Id) return null;
-    const cacheKey = `tutor:auth0:${auth0Id}`;
-
-    const cached = await getCache<any>(cacheKey);
-    if (cached) return cached;
-
     try {
-        await dbConnect();
-        const tutor = await TutorProfile.findOne({ auth0Id }).lean();
-        if (!tutor) return null;
-        const result = { ...tutor, _id: tutor._id.toString() };
-        await setCache(cacheKey, result, TUTOR_TTL);
-        return result;
+        return await api.get(`/user/tutor/${auth0Id}`);
     } catch {
         return null;
     }

@@ -28,7 +28,11 @@ const UserSchema: Schema = new Schema(
     { timestamps: true }
 );
 
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.User;
+}
+
 // Prevent overwrite on HMR
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema, 'User');
 
 export default User;

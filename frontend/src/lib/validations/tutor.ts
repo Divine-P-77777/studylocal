@@ -12,6 +12,7 @@ export const TutorRegistrationSchema = z.object({
     bio: z.string().max(500, 'Bio must be less than 500 characters').optional(),
     phone: z.string().min(10, 'Phone number is required'),
     email: z.string().email('Invalid email address'),
+    customRange: z.string().optional(),
 });
 
 export type TutorRegistrationInput = z.infer<typeof TutorRegistrationSchema>;

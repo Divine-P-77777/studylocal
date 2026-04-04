@@ -1,9 +1,8 @@
-import dbConnect from '@/lib/db/connect';
-import TutorProfile from '@/lib/models/TutorProfile';
 import AdminTutorManagement from '@/components/admin/AdminTutorManagement';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { getTutors } from '@/lib/actions/tutor';
 
 export const metadata: Metadata = {
     title: 'Manage Tutors | Admin Dashboard',
@@ -11,17 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminTutorPage() {
-    await dbConnect();
-
-    // Fetch all tutors, sorted by newest
-    const tutorProfiles = await TutorProfile.find({}).sort({ createdAt: -1 }).lean();
-
-    const plainTutors = tutorProfiles.map(tutor => ({
-        ...tutor,
-        _id: (tutor as any)._id.toString(),
-        createdAt: (tutor as any).createdAt?.toISOString(),
-        updatedAt: (tutor as any).updatedAt?.toISOString(),
-    }));
+    // Fetch all tutors via FastAPI backend (supporting all statuses)
+    const tutors = await getTutors({ status: 'all' });
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -43,7 +33,7 @@ export default async function AdminTutorPage() {
                     </div>
                 </div>
 
-                <AdminTutorManagement initialTutors={plainTutors as any} />
+                <AdminTutorManagement initialTutors={tutors} />
             </div>
         </div>
     );

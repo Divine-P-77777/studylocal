@@ -22,6 +22,7 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
         handleSubmit,
         formState: { errors },
         setValue,
+        watch,
     } = useForm<TutorRegistrationInput>({
         resolver: zodResolver(TutorRegistrationSchema) as any,
         defaultValues: {
@@ -226,6 +227,19 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
                             <option value="Class 11-12">Class 11–12</option>
                             <option value="Degree/Other">Degree / Other</option>
                         </select>
+                        {watch('classRange') === 'Degree/Other' && (
+                            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-xs font-semibold text-brand-600 mb-1 uppercase tracking-wider">Specify Range</label>
+                                <input 
+                                    {...register('customRange')} 
+                                    placeholder="e.g. B.Tech, UPSC, Music" 
+                                    className={`${inputBase} border-brand-200 bg-brand-50/30`} 
+                                />
+                                {errors.customRange && (
+                                    <p className="text-xs text-red-500 mt-1">{errors.customRange.message}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div>

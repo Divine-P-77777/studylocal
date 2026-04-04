@@ -1,7 +1,6 @@
 'use server';
 
-import dbConnect from '@/lib/db/connect';
-import Complaint from '@/lib/models/Complaint';
+import { api } from '@/lib/api-client';
 import { ComplaintSchema } from '@/lib/validations/complaint';
 
 export async function submitComplaint(prevState: any, formData: FormData) {
@@ -15,26 +14,26 @@ export async function submitComplaint(prevState: any, formData: FormData) {
         // Validate
         const validated = ComplaintSchema.safeParse(rawData);
         if (!validated.success) {
-            return { success: false, message: 'Validation failed', errors: validated.error.flatten().fieldErrors };
+            return {
+                success: false,
+                message: 'Validation failed',
+                errors: validated.error.flatten().fieldErrors,
+            };
         }
 
-        // Handle Image (Optional basic logic for now, MVP)
-        // For now we skip actual file upload logic for complaints to save complexity unless requested
-        // or just leave it empty array
-
-        await dbConnect();
-
-        await Complaint.create({
-            type: validated.data.type,
+        // Call FastAPI Backend
+        const payload = {
+            reason: validated.data.type,
             description: validated.data.description,
-            contact: validated.data.contact,
+            contactInfo: validated.data.contact,
             status: 'open',
-            images: [] // Placeholder
-        });
+        };
 
-        return { success: true, message: 'Complaint submitted. We will contact you soon.' };
+        const res = await api.post('/complaint/', payload);
+        return res;
 
     } catch (error: any) {
+        console.error('[Complaint Migration] Failed to submit complaint:', error);
         return { success: false, message: 'Failed to submit complaint.' };
     }
 }

@@ -5,6 +5,7 @@ import TutorProfile from '@/lib/models/TutorProfile';
 import Link from 'next/link';
 import { MessageCircle, User } from 'lucide-react';
 import { getTutorByAuth0Id } from '@/lib/actions/search';
+import ChatListSync from '@/components/chat/ChatListSync';
 
 // Helper to escape regex special characters
 function escapeRegExp(string: string) {
@@ -41,25 +42,36 @@ export default async function ChatListPage() {
 
     // 2. Exact match for Room ID where I am a participant
     const userIdClean = userId.replace(/\|/g, '_');
-    const userIdEscaped = escapeRegExp(userIdClean);
+    const userIdEscaped = escapeRegExp(userId); // Search for raw ID
+    const userIdEscapedPipe = escapeRegExp(userId).replace(/\\\|/g, '|'); // Search for unescaped pipe if needed
+    const userIdCleanEscaped = escapeRegExp(userIdClean); // Search for ID with underscore
+
+    console.log(`[Chat] Searching for User: ${userId} (Clean: ${userIdClean})`);
 
     // Case A: I am the STUDENT (typically at the end of the roomId)
     searchConditions.push({ roomId: { $regex: `-${userIdEscaped}$` } });
+    searchConditions.push({ roomId: { $regex: `-${userIdEscapedPipe}$` } });
+    searchConditions.push({ roomId: { $regex: `-${userIdCleanEscaped}$` } });
 
     // Case B: I am the TUTOR by Profile ID (typically at the start)
     if (tutorProfile) {
+        console.log(`[Chat] User has Tutor Profile: ${tutorProfile._id}`);
         searchConditions.push({ roomId: { $regex: `^${tutorProfile._id}-` } });
+    } else {
+        console.warn(`[Chat] No Tutor Profile found for user ${userId}. Checking if room contains user ID as string.`);
     }
 
     // Fallback: Just search for my ID string anywhere in the roomId
-    // This is the most exhaustive search—any room containing the user's encoded Auth0 ID.
     searchConditions.push({ roomId: { $regex: userIdEscaped } });
+    searchConditions.push({ roomId: { $regex: userIdEscapedPipe } });
+    searchConditions.push({ roomId: { $regex: userIdCleanEscaped } });
 
     const relevantRooms = await Message.distinct('roomId', {
         $or: searchConditions
     });
 
-    console.log(`[Chat] Found ${relevantRooms.length} rooms for user: ${userId}`);
+    console.log(`[Chat] Discovery conditions: ${JSON.stringify(searchConditions)}`);
+    console.log(`[Chat] Found ${relevantRooms.length} rooms for ${userId}: ${JSON.stringify(relevantRooms)}`);
 
     const chats = [];
 
@@ -151,6 +163,9 @@ export default async function ChatListPage() {
 
     return (
         <div className="flex flex-col h-screen bg-gray-50">
+            {/* Real-time synchronization layer */}
+            <ChatListSync />
+
             {/* Custom Header with Gradient and Back Button */}
             <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-4 shadow-md flex items-center justify-between shrink-0 text-white">
                 <div className="flex items-center gap-3">

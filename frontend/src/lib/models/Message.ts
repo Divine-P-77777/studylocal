@@ -23,6 +23,10 @@ const MessageSchema = new Schema<IMessage>({
 // Compound index for room + timestamp for faster history lookup
 MessageSchema.index({ roomId: 1, timestamp: 1 });
 
-const Message: Model<IMessage> = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema);
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.Message;
+}
+
+const Message: Model<IMessage> = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema, 'Message');
 
 export default Message;

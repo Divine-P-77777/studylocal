@@ -1,17 +1,11 @@
 'use server';
 
-import dbConnect from '@/lib/db/connect';
-import TutorProfile from '@/lib/models/TutorProfile';
+import { api } from '@/lib/api-client';
 import { TutorRegistrationSchema } from '@/lib/validations/tutor';
-import { auth0 } from "@/lib/auth0";
+import { revalidatePath } from 'next/cache';
 
 export async function registerTutor(prevState: any, formData: FormData) {
     try {
-        const session = await auth0.getSession();
-        if (!session || !session.user) {
-            return { success: false, message: 'You must be logged in to register.' };
-        }
-
         const rawData = {
             fullName: formData.get('fullName'),
             photo: formData.get('photo'),
@@ -37,28 +31,18 @@ export async function registerTutor(prevState: any, formData: FormData) {
         }
 
         const data = validatedFields.data;
+        
+        // Use custom range if specified
+        const finalClassRange = data.classRange === 'Degree/Other' && data.customRange 
+            ? data.customRange 
+            : data.classRange;
 
-        await dbConnect();
-
-        // Check if profile exists
-        const existing = await TutorProfile.findOne({ auth0Id: session.user.sub });
-        if (existing) {
-            return { success: false, message: 'You have already registered as a tutor.' };
-        }
-
-        // Photo URL is now handled by frontend upload and passed as a string
-        const photoUrl = data.photo;
-
-        // Process subjects (comma separated string to array)
-        const subjectsArray = data.subjects.split(',').map(s => s.trim()).filter(Boolean);
-
-        // Create profile
-        await TutorProfile.create({
-            auth0Id: session.user.sub,
+        // Call FastAPI Backend
+        const payload = {
             fullName: data.fullName,
-            photoUrl: photoUrl,
-            subjects: subjectsArray,
-            classRange: data.classRange,
+            photoUrl: data.photo,
+            subjects: data.subjects.split(',').map(s => s.trim()).filter(Boolean),
+            classRange: finalClassRange,
             tuitionMode: data.tuitionMode,
             monthlyFee: data.monthlyFee,
             area: data.area,
@@ -67,27 +51,41 @@ export async function registerTutor(prevState: any, formData: FormData) {
             contactInfo: {
                 phone: data.phone,
                 email: data.email,
-            },
-            marketingStatus: 'pending',
-        });
+            }
+        };
 
-        return { success: true, message: 'Registration submitted successfully! Waiting for approval.' };
+        const res = await api.post('/tutor/register', payload);
+        revalidatePath('/dashboard');
+        return res;
     } catch (error: any) {
-        console.error('Registration Error:', error);
+        console.error('[Tutor Migration] Registration Error:', error);
         return { success: false, message: error.message || 'Something went wrong.' };
     }
 }
 
-export async function updateTutorStatus(tutorId: string, status: 'pending' | 'approved' | 'rejected') {
+export async function updateTutor(tutorId: string, data: any) {
     try {
-        await dbConnect();
-        const tutor = await TutorProfile.findByIdAndUpdate(tutorId, { marketingStatus: status }, { new: true });
-        if (!tutor) {
-            return { success: false, message: 'Tutor not found' };
-        }
-        return { success: true, message: `Status updated to ${status}` };
+        // This handles status updates AND general profile edits
+        const res = await api.patch(`/tutor/${tutorId}`, data);
+        revalidatePath('/admin/tutor');
+        return res;
     } catch (error: any) {
-        console.error('Update Status Error:', error);
+        console.error('[Tutor Migration] Update Error:', error);
         return { success: false, message: error.message || 'Something went wrong.' };
+    }
+}
+
+export async function getTutors(filters: any = {}) {
+    try {
+        const query = new URLSearchParams();
+        if (filters.status) query.append('status', filters.status);
+        if (filters.subject) query.append('subject', filters.subject);
+        if (filters.area) query.append('area', filters.area);
+        
+        const res = await api.get(`/tutor/?${query.toString()}`);
+        return res.tutors || [];
+    } catch (error: any) {
+        console.error('[Tutor Migration] Get Tutors Error:', error);
+        return [];
     }
 }

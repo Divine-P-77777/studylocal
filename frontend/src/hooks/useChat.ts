@@ -8,23 +8,26 @@ export interface Message {
     senderId: string;
     senderName: string;
     message: string;
+    fileUrl?: string;
+    messageType?: string;
     timestamp: Date;
     isRead?: boolean;
     readAt?: Date;
 }
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 export const useChat = (
     roomId: string,
     userId: string,
     userName: string,
     initialMessages: Message[],
-    recipientId?: string // Who are we talking to?
+    recipientId?: string
 ) => {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [isConnected, setIsConnected] = useState(false);
     const socketRef = useRef<Socket | null>(null);
     const router = useRouter();
-
     const hasSeeded = useRef<string | null>(null);
 
     useEffect(() => {
@@ -34,7 +37,6 @@ export const useChat = (
         }
     }, [roomId, initialMessages]);
 
-    // Helper to mark messages as read
     const markAsRead = useCallback(() => {
         if (socketRef.current?.connected && roomId && userId) {
             socketRef.current.emit('mark-as-read', { roomId, userId });
@@ -44,89 +46,74 @@ export const useChat = (
     useEffect(() => {
         if (!roomId || !userId) return;
 
-        const SOCKET_INIT_URL = '/api/socket/io';
-        let socket: Socket | null = null;
+        const socket = io(BACKEND_URL, {
+            path: "/socket.io",
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 10,
+            reconnectionDelay: 2000,
+        });
 
-        const initSocket = async () => {
-            try {
-                await fetch(SOCKET_INIT_URL);
+        socketRef.current = socket;
 
-                socket = io({
-                    path: SOCKET_INIT_URL,
-                    addTrailingSlash: false,
-                    transports: ['polling', 'websocket'],
-                    reconnectionAttempts: 10,
-                    reconnectionDelay: 2000,
-                });
+        socket.on('connect', () => {
+            console.log('[Chat Migration] Connected to FastAPI Socket.IO');
+            setIsConnected(true);
+            socket.emit('join-room', roomId);
+            socket.emit('user-online', userId);
+            socket.emit('mark-as-read', { roomId, userId });
+        });
 
-                socketRef.current = socket;
+        socket.on('disconnect', () => setIsConnected(false));
 
-                socket.on('connect', () => {
-                    console.log('[Chat] Socket connected');
-                    setIsConnected(true);
-                    socket?.emit('join-room', roomId);
-                    socket?.emit('user-online', userId);
-                    // Mark as read immediately on connect/join
-                    socket?.emit('mark-as-read', { roomId, userId });
-                });
-
-                socket.on('disconnect', () => setIsConnected(false));
-
-                socket.on('receive-message', (data: Message) => {
-                    // If we are looking at the chat, mark this new message as read immediately
-                    if (document.visibilityState === 'visible') {
-                        socket?.emit('mark-as-read', { roomId, userId });
-                    }
-
-                    setMessages((prev) => {
-                        // Optimistic replacement
-                        if (data.senderId === userId) {
-                            const tempIdx = prev.findIndex(m => m._id === `temp-${data.message}` || (!m._id && m.senderId === userId && m.message === data.message));
-                            if (tempIdx !== -1) {
-                                const next = [...prev];
-                                next[tempIdx] = data;
-                                return next;
-                            }
-                        }
-                        if (data._id && prev.some(m => m._id === data._id)) return prev;
-                        return [...prev, data];
-                    });
-                    
-                    router.refresh();
-                });
-
-                // Handle "Seen" indicators from the other user
-                socket.on('messages-seen', (data: { roomId: string, readBy: string }) => {
-                    if (data.roomId === roomId && data.readBy !== userId) {
-                        setMessages((prev) => prev.map(m => 
-                            m.senderId === userId ? { ...m, isRead: true, readAt: new Date() } : m
-                        ));
-                    }
-                });
-
-                socket.on('message-deleted', (messageId: string) => {
-                    setMessages((prev) => prev.filter((m) => m._id !== messageId));
-                });
-
-            } catch (err) {
-                console.error('[Chat] Init failed:', err);
+        socket.on('receive-message', (data: Message) => {
+            if (document.visibilityState === 'visible') {
+                socket.emit('mark-as-read', { roomId, userId });
             }
-        };
+
+            setMessages((prev) => {
+                if (data.senderId === userId) {
+                    const tempIdx = prev.findIndex(m => m._id?.startsWith('temp-') && m.message === data.message);
+                    if (tempIdx !== -1) {
+                        const next = [...prev];
+                        next[tempIdx] = { ...data, timestamp: new Date(data.timestamp) };
+                        return next;
+                    }
+                }
+                
+                if (data._id && prev.some(m => m._id === data._id)) return prev;
+                return [...prev, { ...data, timestamp: new Date(data.timestamp) }];
+            });
+            
+            router.refresh();
+        });
+
+        socket.on('messages-seen', (data: { roomId: string, readBy: string }) => {
+            if (data.roomId === roomId && data.readBy !== userId) {
+                setMessages((prev) => prev.map(m => 
+                    m.senderId === userId ? { ...m, isRead: true, readAt: new Date() } : m
+                ));
+            }
+        });
+
+        // RE-ADDED: Handle message-deleted broadcast from FastAPI
+        socket.on('message-deleted', (data: { roomId: string, messageId: string }) => {
+            if (data.roomId === roomId) {
+                setMessages((prev) => prev.filter(m => m._id !== data.messageId));
+            }
+        });
 
         const handleFocus = () => markAsRead();
         window.addEventListener('focus', handleFocus);
 
-        initSocket();
-
         return () => {
             window.removeEventListener('focus', handleFocus);
-            if (socket) socket.disconnect();
+            socket.disconnect();
         };
     }, [roomId, userId, router, markAsRead]);
 
     const sendMessage = useCallback(
-        async (msg: string) => {
-            if (!msg.trim() || !socketRef.current?.connected) return;
+        async (msg: string, fileUrl?: string, messageType: string = "text") => {
+            if ((!msg.trim() && !fileUrl) || !socketRef.current?.connected) return;
 
             const optimisticMsg: Message = {
                 _id: `temp-${Date.now()}`,
@@ -134,6 +121,8 @@ export const useChat = (
                 senderId: userId,
                 senderName: userName,
                 message: msg,
+                fileUrl,
+                messageType,
                 timestamp: new Date(),
                 isRead: false
             };
@@ -145,15 +134,20 @@ export const useChat = (
                 senderId: userId,
                 senderName: userName,
                 message: msg,
+                fileUrl,
+                messageType,
                 recipientId,
             });
         },
         [roomId, userId, userName, recipientId]
     );
 
+    // RE-ADDED: Delete message emitter
     const deleteMessage = useCallback(
         async (messageId: string) => {
-            socketRef.current?.emit('delete-message', { roomId, messageId });
+            if (socketRef.current?.connected && roomId && messageId) {
+                socketRef.current.emit('delete-message', { roomId, messageId });
+            }
         },
         [roomId]
     );

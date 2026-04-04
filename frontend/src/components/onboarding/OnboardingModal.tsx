@@ -6,9 +6,11 @@ import { toast } from 'react-toastify';
 import { User, GraduationCap, School, Camera, Upload, Loader2 } from 'lucide-react';
 import { updateUser, getUser } from '@/lib/actions/user';
 import Image from 'next/image';
+import { useLoading } from '@/context/LoadingContext';
 
 export default function OnboardingModal() {
-    const { user, isLoading } = useUser();
+    const { user, isLoading: isAuthLoading } = useUser();
+    const { setLoading } = useLoading();
     const [isOpen, setIsOpen] = useState(false);
     const [step, setStep] = useState<1 | 2 | 3>(1); // Added Step 3
     const [role, setRole] = useState<'student' | 'tutor' | null>(null);
@@ -31,10 +33,10 @@ export default function OnboardingModal() {
             }
         };
 
-        if (!isLoading && user) {
+        if (!isAuthLoading && user) {
             checkUser();
         }
-    }, [user, isLoading]);
+    }, [user, isAuthLoading]);
 
     const uploadToCloudinary = async (file: File) => {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -46,6 +48,7 @@ export default function OnboardingModal() {
         }
 
         setIsUploading(true);
+        setLoading(true);
         try {
             const formData = new FormData();
             formData.append('file', file);
@@ -66,6 +69,7 @@ export default function OnboardingModal() {
             return null;
         } finally {
             setIsUploading(false);
+            setLoading(false);
         }
     };
 
@@ -83,6 +87,7 @@ export default function OnboardingModal() {
         if (!role || !fullName.trim()) return;
 
         setIsSubmitting(true);
+        setLoading(true);
         try {
             await updateUser(user!.sub!, {
                 email: user!.email!,
@@ -108,6 +113,7 @@ export default function OnboardingModal() {
             toast.error("Failed to save profile");
         } finally {
             setIsSubmitting(false);
+            setLoading(false);
         }
     };
 

@@ -1,0 +1,7 @@
+51.20.249.34.nip.io {
+    # Caddy automatically proxies all API and WebSocket traffic
+    reverse_proxy backend:8000
+    
+    # Optional: Encode responses to save bandwidth
+    encode zstd gzip
+}

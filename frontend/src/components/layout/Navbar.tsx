@@ -4,49 +4,57 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth0 } from '@/hooks/useAuth0';
 import { Menu, X, Download, User as UserIcon, LogOut, MessageCircle, AlertCircle, FileText, Search } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { io } from 'socket.io-client';
+import { api } from '@/lib/api-client';
 
 export default function Navbar() {
-    const { user, isLoading, loginWithRedirect, logout } = useAuth0();
+    const { user, isLoading, logout } = useAuth0();
     const [isOpen, setIsOpen] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [unreadCount, setUnreadCount] = useState(0);
+    const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
     const pathname = usePathname();
+
+    const fetchUnreadCount = useCallback(async () => {
+        if (!user) return;
+        try {
+            const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+            const res = await api.get('/chat/unread-count');
+            setUnreadCount(res.count || 0);
+        } catch (err) {
+            console.warn('[Navbar] Failed to fetch unread count');
+        }
+    }, [user]);
 
     useEffect(() => {
         if (!user) return;
 
-        let socket: ReturnType<typeof io> | null = null;
-        let isMounted = true;
+        // Use Server-Sent Events for real-time unread count
+        const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+        const eventSource = new EventSource(`${BACKEND_URL}/api/v1/chat/stream?x_user_id=${user.sub}`);
 
-        const initNotificationSocket = async () => {
-            // Must init the Pages Router socket server first
-            try { await fetch('/api/socket/io'); } catch { /* already running */ }
-            if (!isMounted) return;
+        eventSource.addEventListener('initial-count', (e: any) => {
+            const data = JSON.parse(e.data);
+            setUnreadCount(data.count || 0);
+        });
 
-            socket = io({
-                path: '/api/socket/io',
-                addTrailingSlash: false,
-                transports: ['polling', 'websocket'],
-                reconnection: true,
-            });
+        eventSource.addEventListener('new-message', (e: any) => {
+            const data = JSON.parse(e.data);
+            setUnreadCount(data.count || 0);
+        });
 
-            socket.on('connect', () => {
-                if (user.sub) socket!.emit('user-online', user.sub);
-            });
+        eventSource.addEventListener('unread-count', (e: any) => {
+            const data = JSON.parse(e.data);
+            setUnreadCount(data.count || 0);
+        });
 
-            socket.on('notification', () => {
-                setUnreadCount(prev => prev + 1);
-            });
+        eventSource.onerror = () => {
+            console.warn('[Navbar] SSE Connection lost. Retrying...');
         };
 
-        initNotificationSocket();
-
         return () => {
-            isMounted = false;
-            socket?.disconnect();
+            eventSource.close();
         };
     }, [user]);
 
@@ -69,7 +77,6 @@ export default function Navbar() {
                 <div className="flex justify-between h-16">
                     <div className="flex">
                         <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-                            {/* Logo Icon can go here */}
                             <div className="bg-green-600 text-white p-1.5 rounded-lg shadow-sm">
                                 <b className="text-xl">SL</b>
                             </div>
