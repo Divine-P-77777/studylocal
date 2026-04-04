@@ -8,7 +8,6 @@ import { LoadingProvider } from '@/context/LoadingContext';
 import LoadingOverlay from './ui/LoadingOverlay';
 import { Suspense } from 'react';
 import { NavigationLoader } from './ui/NavigationLoader';
-import DeployWatcher from './ui/DeployWatcher';
 
 export default function Providers({ children }: { children: any }) {
     return (
@@ -18,8 +17,6 @@ export default function Providers({ children }: { children: any }) {
                 <Suspense fallback={null}>
                     <NavigationLoader />
                 </Suspense>
-                {/* Auto-reload on new Vercel deployment to prevent stale Server Action IDs */}
-                {process.env.NODE_ENV === 'production' && <DeployWatcher />}
                 {children}
                 <OnboardingModal />
                 <LoadingOverlay />

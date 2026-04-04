@@ -42,37 +42,39 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // ── Performance ───────────────────────────────────────────────────────────
+  compress: true,           // Gzip all responses
+  poweredByHeader: false,   // Remove X-Powered-By header (minor security + size)
+  reactStrictMode: true,    // Better React tree-shaking and warnings
+  
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 's.gravatar.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.auth0.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i0.wp.com',
-      }
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 's.gravatar.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: 'cdn.auth0.com' },
+      { protocol: 'https', hostname: 'i0.wp.com' },
     ],
     dangerouslyAllowSVG: true,
+    // Serve modern compressed image formats to browsers that support them
+    formats: ['image/avif', 'image/webp'],
   },
-  // ── Security headers ──────────────────────────────────────────────────────
+
+  // ── Security + Caching headers ────────────────────────────────────────────
   async headers() {
     return [
+      // Security headers on all routes
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      // Long-lived cache for all static assets (JS, CSS, fonts, images)
+      // Next.js content-hashes these files so cache busting is automatic
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
       },
     ];
   },
@@ -99,10 +101,6 @@ const nextConfig: NextConfig = {
       };
     }
     return config;
-  },
-  // Inject Vercel's git commit SHA as the public build ID for DeployWatcher
-  env: {
-    NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
   },
 };
 
