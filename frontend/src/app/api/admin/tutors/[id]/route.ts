@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/connect';
 import TutorProfile from '@/lib/models/TutorProfile';
 import { auth0 } from '@/lib/auth0';
-
+import { revalidatePath } from 'next/cache';
 import { ADMIN_EMAILS } from '@/lib/constants';
 
 export async function PATCH(
@@ -35,6 +35,10 @@ export async function PATCH(
         if (!updatedTutor) {
             return NextResponse.json({ message: 'Tutor not found' }, { status: 404 });
         }
+
+        // Immediately purge the tutors listing page ISR cache so the
+        // approved/rejected tutor appears (or disappears) within seconds.
+        revalidatePath('/tutors');
 
         return NextResponse.json({ success: true, tutor: updatedTutor });
     } catch (error: any) {
