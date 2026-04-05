@@ -34,6 +34,7 @@ COPY . .
 # Expose the default FastAPI port
 EXPOSE 8000
 
-# Run with uvicorn
-# In production, we use --workers to handle more concurrency
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Run with uvicorn targeting socket_app (the Socket.IO ASGI wrapper, not the bare FastAPI app).
+# IMPORTANT: Do NOT use --workers > 1 without a Redis-backed socketio message queue adapter.
+# Multiple workers with in-memory rooms means users in different workers never receive each other's messages.
+CMD ["uvicorn", "app.main:socket_app", "--host", "0.0.0.0", "--port", "8000"]

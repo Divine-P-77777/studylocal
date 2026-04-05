@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useRouter } from 'next/navigation';
 
 export interface Message {
     _id?: string;
@@ -27,7 +26,6 @@ export const useChat = (
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [isConnected, setIsConnected] = useState(false);
     const socketRef = useRef<Socket | null>(null);
-    const router = useRouter();
     const hasSeeded = useRef<string | null>(null);
 
     useEffect(() => {
@@ -72,6 +70,7 @@ export const useChat = (
 
             setMessages((prev) => {
                 if (data.senderId === userId) {
+                    // Replace the optimistic temp message with the real one from the server
                     const tempIdx = prev.findIndex(m => m._id?.startsWith('temp-') && m.message === data.message);
                     if (tempIdx !== -1) {
                         const next = [...prev];
@@ -79,12 +78,14 @@ export const useChat = (
                         return next;
                     }
                 }
-                
+
+                // Deduplicate: don't add if we already have this message ID
                 if (data._id && prev.some(m => m._id === data._id)) return prev;
                 return [...prev, { ...data, timestamp: new Date(data.timestamp) }];
             });
-            
-            router.refresh();
+            // NOTE: router.refresh() intentionally removed.
+            // setMessages() above handles the real-time UI update instantly.
+            // The sidebar/chat-list is refreshed separately via SSE in ChatListSync.tsx.
         });
 
         socket.on('messages-seen', (data: { roomId: string, readBy: string }) => {
@@ -109,7 +110,7 @@ export const useChat = (
             window.removeEventListener('focus', handleFocus);
             socket.disconnect();
         };
-    }, [roomId, userId, router, markAsRead]);
+    }, [roomId, userId, markAsRead]);
 
     const sendMessage = useCallback(
         async (msg: string, fileUrl?: string, messageType: string = "text") => {

@@ -21,6 +21,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── Socket.IO Server Setup ───────────────────────────────────────────
+# NOTE: socket_app is defined AFTER the FastAPI app is fully built (see bottom of file).
+# This is required so socketio.ASGIApp can wrap the FastAPI app as `other_asgi_app`.
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins='*',
@@ -30,7 +32,6 @@ sio = socketio.AsyncServer(
     ping_timeout=45,
     ping_interval=20
 )
-socket_app = socketio.ASGIApp(sio)
 
 # ── Rate Limiter ───────────────────────────────────────────────────
 # limiter is imported from app.core.limiter
@@ -60,8 +61,12 @@ app.include_router(user_router.router, prefix=f"{settings.API_V1_STR}/user", tag
 app.include_router(tutor_router.router, prefix=f"{settings.API_V1_STR}/tutor", tags=["tutor"])
 app.include_router(complaint_router.router, prefix=f"{settings.API_V1_STR}/complaint", tags=["complaint"])
 
-# Mount Socket.IO to the FastAPI app
-app.mount("/socket.io", socket_app)
+# ── Socket.IO ASGI Wrapper ───────────────────────────────────────────
+# socket_app wraps the FastAPI app so it can intercept WebSocket upgrades
+# at the /socket.io path BEFORE they reach Starlette's router.
+# This is the ONLY correct architecture for python-socketio + FastAPI.
+# Uvicorn must target `socket_app` (not `app`).
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app, socketio_path='/socket.io')
 
 # ── Lifecycle Events ────────────────────────────────────────────────
 @app.on_event("startup")

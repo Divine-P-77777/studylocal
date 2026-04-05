@@ -7,7 +7,8 @@ export async function getMessages(roomId: string) {
 
     try {
         // Call FastAPI instead of direct MongoDB
-        const messages = await api.get(`/chat/history/${roomId}`);
+        // Use no-store to ensure Next.js fetch cache doesn't mask real-time updates
+        const messages = await api.get(`/chat/history/${roomId}`, { cache: 'no-store' });
         console.log(`[Chat Migration] Fetched ${messages.length} messages from FastAPI for room: ${roomId}`);
         return messages;
     } catch (error) {
