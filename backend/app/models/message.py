@@ -21,16 +21,20 @@ class MessageModel(BaseModel):
         }
 
 def serialize_message(doc) -> dict:
+    ts = doc.get("timestamp")
+    read_at = doc.get("readAt")
     return {
         "_id": str(doc["_id"]),
         "roomId": doc["roomId"],
         "senderId": doc["senderId"],
         "senderName": doc["senderName"],
-        "recipientId": doc.get("recipientId", ""), # Fallback for legacy
+        "recipientId": doc.get("recipientId", ""),
         "message": doc["message"],
         "fileUrl": doc.get("fileUrl"),
         "messageType": doc.get("messageType", "text"),
-        "timestamp": doc["timestamp"],
+        # Always convert datetime → ISO string so Socket.IO / json.dumps can serialize it
+        "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else ts,
         "isRead": doc.get("isRead", False),
-        "readAt": doc.get("readAt"),
+        "readAt": read_at.isoformat() if hasattr(read_at, "isoformat") else read_at,
     }
+
