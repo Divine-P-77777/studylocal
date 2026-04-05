@@ -67,7 +67,11 @@ export async function updateTutor(tutorId: string, data: any) {
     try {
         // This handles status updates AND general profile edits
         const res = await api.patch(`/tutor/${tutorId}`, data);
+        // Revalidate BOTH the admin view and the public /tutors listing page.
+        // Without revalidating /tutors, an approved tutor will NOT appear publicly
+        // until the 30s ISR window naturally expires.
         revalidatePath('/admin/tutor');
+        revalidatePath('/tutors');
         return res;
     } catch (error: any) {
         console.error('[Tutor Migration] Update Error:', error);
