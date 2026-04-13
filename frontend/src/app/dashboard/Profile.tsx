@@ -78,6 +78,12 @@ export default function Profile() {
                             </div>
                             <a
                                 href={getLogoutUrl()}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (window.confirm('Are you sure you want to log out?')) {
+                                        window.location.href = getLogoutUrl();
+                                    }
+                                }}
                                 className="text-gray-400 hover:text-red-500 transition-colors p-2"
                                 title="Logout"
                             >

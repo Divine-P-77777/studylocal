@@ -16,7 +16,6 @@ export default function TutorRegistrationPage() {
             setIsRedirecting(true);
             toast.info("Please login to register as a tutor");
 
-            // Build absolute returnTo URL so Auth0 accepts it in production
             const returnTo = typeof window !== 'undefined'
                 ? `${window.location.origin}/tutor-registration`
                 : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tutor-registration`;

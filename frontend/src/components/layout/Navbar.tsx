@@ -139,6 +139,12 @@ export default function Navbar() {
                                     )}
                                 <a
                                         href={getLogoutUrl()}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            if (window.confirm('Are you sure you want to log out?')) {
+                                                window.location.href = getLogoutUrl();
+                                            }
+                                        }}
                                         className="text-gray-400 hover:text-red-500 transition"
                                         title="Logout"
                                     >
@@ -205,6 +211,12 @@ export default function Navbar() {
                         {!isLoading && user && (
                             <a
                                 href={getLogoutUrl()}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (window.confirm('Are you sure you want to log out?')) {
+                                        window.location.href = getLogoutUrl();
+                                    }
+                                }}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-base font-medium text-red-600 hover:bg-red-50 rounded-md"
                             >
                                 <LogOut className="w-5 h-5" />
