@@ -1,39 +1,19 @@
 'use server';
 
 import { api } from '@/lib/api-client';
-import { ComplaintSchema } from '@/lib/validations/complaint';
 
-export async function submitComplaint(prevState: any, formData: FormData) {
+export async function submitSupportRequest(type: string, description: string) {
     try {
-        const rawData = {
-            type: formData.get('type') as any,
-            description: formData.get('description'),
-            contact: formData.get('contact'),
-        };
-
-        // Validate
-        const validated = ComplaintSchema.safeParse(rawData);
-        if (!validated.success) {
-            return {
-                success: false,
-                message: 'Validation failed',
-                errors: validated.error.flatten().fieldErrors,
-            };
-        }
-
-        // Call FastAPI Backend
         const payload = {
-            reason: validated.data.type,
-            description: validated.data.description,
-            contactInfo: validated.data.contact,
-            status: 'open',
+            type, // feedback, issue, complaint
+            description,
+            reason: `Dashboard Support: ${type.toUpperCase()}`
         };
-
+        
         const res = await api.post('/complaint/', payload);
         return res;
-
     } catch (error: any) {
-        console.error('[Complaint Migration] Failed to submit complaint:', error);
-        return { success: false, message: 'Failed to submit complaint.' };
+        console.error('[Support Action] Submission Error:', error);
+        return { success: false, message: error.message || 'Failed to submit request.' };
     }
 }

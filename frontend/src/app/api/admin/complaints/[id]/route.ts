@@ -3,7 +3,7 @@ import dbConnect from '@/lib/db/connect';
 import Complaint from '@/lib/models/Complaint';
 import { auth0 } from '@/lib/auth0';
 
-const ADMIN_EMAILS = ['admin@studylocal.com', 'demo@admin.com'];
+import { ADMIN_EMAILS } from '@/lib/constants';
 
 export async function PATCH(
     req: NextRequest,
@@ -20,8 +20,8 @@ export async function PATCH(
         const body = await req.json();
         const { status } = body;
 
-        // Validate status used for complaints
-        if (!['open', 'resolved', 'in progress'].includes(status)) {
+        // Validate status — 'open' kept for backward compatibility
+        if (!['pending', 'open', 'resolved', 'in progress'].includes(status)) {
             return NextResponse.json({ message: 'Invalid status' }, { status: 400 });
         }
 

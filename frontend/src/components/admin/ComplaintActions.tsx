@@ -1,8 +1,11 @@
 'use client';
 
-import { CheckCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
+
+type Status = 'pending' | 'open' | 'in progress' | 'resolved';
 
 interface ComplaintActionsProps {
     complaintId: string;
@@ -11,53 +14,67 @@ interface ComplaintActionsProps {
 
 export default function ComplaintActions({ complaintId, currentStatus }: ComplaintActionsProps) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<Status | null>(null);
 
-    const handleStatusUpdate = async (status: 'resolved' | 'in progress' | 'open') => {
+    const handleStatusUpdate = async (status: Status) => {
+        if (isLoading) return; // Prevent duplicate clicks
+        
         setIsLoading(status);
         try {
             const res = await fetch(`/api/admin/complaints/${complaintId}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
             });
 
             if (!res.ok) {
-                throw new Error('Failed to update status');
+                const data = await res.json();
+                throw new Error(data.message || 'Failed to update status');
             }
-
+            
+            toast.success(`Status updated to ${status}`);
             router.refresh();
-        } catch (error) {
-            alert('Something went wrong');
+        } catch (error: any) {
+            toast.error(error.message || 'Something went wrong. Please try again.');
         } finally {
             setIsLoading(null);
         }
     };
 
+    const isCurrent = (status: Status) => currentStatus?.toLowerCase() === status;
+
     return (
-        <div className="flex gap-2">
-            {/* Show buttons typically not available for current status, or just show all for flexibility */}
-            {currentStatus !== 'resolved' && (
+        <div className="flex flex-wrap gap-2">
+            {!isCurrent('in progress') && !isCurrent('resolved') && (
+                <button
+                    onClick={() => handleStatusUpdate('in progress')}
+                    disabled={!!isLoading}
+                    className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition disabled:opacity-50 border border-amber-200 font-semibold"
+                >
+                    {isLoading === 'in progress' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
+                    Mark In Progress
+                </button>
+            )}
+
+            {!isCurrent('resolved') && (
                 <button
                     onClick={() => handleStatusUpdate('resolved')}
                     disabled={!!isLoading}
-                    className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded hover:bg-green-100 transition disabled:opacity-50 border border-green-200"
+                    className="flex items-center gap-1.5 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-100 transition disabled:opacity-50 border border-green-200 font-semibold"
                 >
                     {isLoading === 'resolved' ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
                     Resolve
                 </button>
             )}
 
-            {currentStatus !== 'in progress' && currentStatus !== 'resolved' && (
+            {isCurrent('resolved') && (
                 <button
-                    onClick={() => handleStatusUpdate('in progress')}
+                    onClick={() => handleStatusUpdate('pending')}
                     disabled={!!isLoading}
-                    className="flex items-center gap-1 text-xs bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded hover:bg-yellow-100 transition disabled:opacity-50 border border-yellow-200"
+                    className="flex items-center gap-1.5 text-xs bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 border border-gray-200 font-semibold"
                 >
-                    {isLoading === 'in progress' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-                    Mark In Progress
+                    {isLoading === 'pending' ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                    Reopen
                 </button>
             )}
         </div>

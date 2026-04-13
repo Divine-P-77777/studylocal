@@ -82,6 +82,15 @@ class TutorService:
             return None
 
     @staticmethod
+    async def get_tutor_by_auth0_id(auth0_id: str) -> Optional[dict]:
+        """Fetch a tutor profile by its unique Auth0 sub ID."""
+        try:
+            tutor = await mongo_client.db.TutorProfile.find_one({"auth0Id": auth0_id})
+            return serialize_tutor(tutor) if tutor else None
+        except Exception:
+            return None
+
+    @staticmethod
     async def update_tutor_profile(tutor_id: str, update_data: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         """
         Update a tutor profile (Admin or Self).

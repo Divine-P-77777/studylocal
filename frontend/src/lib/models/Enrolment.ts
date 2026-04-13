@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IEnrolment extends Document {
     tutorId: mongoose.Types.ObjectId;
@@ -28,8 +28,12 @@ const EnrolmentSchema: Schema = new Schema({
     timestamps: true
 });
 
-// Avoid duplicate enrolments for the same pair? 
-// Maybe multiple active ones for different subjects? 
-// For now, let's keep it flexible or add a unique index if desired.
+// Robust Singleton Pattern for Next.js HMR
+if (process.env.NODE_ENV === 'development') {
+    delete mongoose.models.Enrolment;
+}
 
-export default mongoose.models.Enrolment || mongoose.model<IEnrolment>('Enrolment', EnrolmentSchema);
+const Enrolment: Model<IEnrolment> = 
+    mongoose.models.Enrolment || mongoose.model<IEnrolment>('Enrolment', EnrolmentSchema, 'Enrolment');
+
+export default Enrolment;

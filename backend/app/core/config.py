@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # Admin
     ADMIN_EMAILS: Union[List[str], str] = []
 
+    # Email (Gmail SMTP)
+    EMAIL_HOST: str = "smtp.gmail.com"
+    EMAIL_PORT: int = 587
+    EMAIL_USER: str = ""
+    EMAIL_PASS: str = ""  # Gmail App Password (16-char, no spaces)
+    SENDER_EMAIL: str = ""
+
     @validator("BACKEND_CORS_ORIGINS", "ADMIN_EMAILS", pre=True)
     def assemble_list_from_string(cls, v: Any) -> Any:
         if isinstance(v, str) and not v.startswith("["):

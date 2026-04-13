@@ -47,6 +47,12 @@ class MongoClient:
             # ── User Indexes ─────────────────────────────────────────────────
             await self.db.User.create_index("sub", unique=True)
             
+            # ── OTP & Security Indexes ───────────────────────────────────────
+            # TTL Index: Automatically delete expired codes
+            await self.db.OTPCode.create_index("expiresAt", expireAfterSeconds=0)
+            # TTL Index: Automatically delete expired sessions
+            await self.db.ProfileEditSession.create_index("expiresAt", expireAfterSeconds=0)
+            
             logger.info("[MongoDB] Indexes verified/created successfully.")
         except Exception as e:
             logger.error(f"[MongoDB] Error creating indexes: {e}")

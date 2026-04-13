@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/db/connect';
 import TutorProfile from '@/lib/models/TutorProfile';
+import Complaint from '@/lib/models/Complaint';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { Metadata } from 'next';
 
@@ -21,7 +22,7 @@ export default async function AdminPage() {
   const total = await TutorProfile.countDocuments();
   const approved = await TutorProfile.countDocuments({ marketingStatus: 'approved' });
   const pending = await TutorProfile.countDocuments({ marketingStatus: 'pending' });
-  const complaints = 0;
+  const complaintsCount = await Complaint.countDocuments();
 
 
   const plainPendingTutors = pendingTutors.map(tutor => ({
@@ -35,7 +36,7 @@ export default async function AdminPage() {
     total,
     approved,
     pending,
-    complaints
+    complaints: complaintsCount
   };
 
   return (

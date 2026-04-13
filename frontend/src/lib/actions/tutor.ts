@@ -93,3 +93,32 @@ export async function getTutors(filters: any = {}) {
         return [];
     }
 }
+
+export async function sendTutorOTP() {
+    try {
+        const res = await api.post('/tutor/otp/send', {});
+        return { 
+            success: true, 
+            message: res.message,
+            remainingAttempts: res.remaining_attempts 
+        };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Failed to send OTP' };
+    }
+}
+
+export async function verifyTutorOTP(code: string) {
+    try {
+        return await api.post('/tutor/otp/verify', { code });
+    } catch (error: any) {
+        return { success: false, message: error.message || 'OTP verification failed' };
+    }
+}
+
+export async function getMyTutorProfile() {
+    try {
+        return await api.get('/tutor/me/profile', { cache: 'no-store' });
+    } catch (error) {
+        return null;
+    }
+}

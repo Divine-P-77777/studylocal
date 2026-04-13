@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { auth0 } from "./lib/auth0";
 
 export async function proxy(request: NextRequest) {
@@ -7,10 +7,16 @@ export async function proxy(request: NextRequest) {
   }
   try {
     return await auth0.middleware(request);
-  } catch (error) {
-    console.error("[Auth0] Middleware JWE invalid - clearing session recommended:", error);
-    // On JWE failure, return nothing (let the app handle unauth state)
-    // instead of crashing with Runtime error.
+  } catch (error: any) {
+    if (error.code === 'ERR_JWE_INVALID') {
+      console.warn("[Auth0] Invalid session detected. Clearing cookie.");
+      // Create a response that continues to the page but clears the corrupted cookie
+      const response = NextResponse.next();
+      response.cookies.delete('appSession');
+      return response;
+    }
+    
+    console.error("[Auth0] Middleware error:", error);
     return;
   }
 }
