@@ -10,10 +10,10 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import SubjectInput from './SubjectInput';
 
-export default function TutorRegistrationForm({ user }: { user: any }) {
+export default function TutorRegistrationForm({ user, dbUser }: { user: any, dbUser?: any }) {
     const [serverError, setServerError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [preview, setPreview] = useState<string | null>(user?.picture || null);
+    const [preview, setPreview] = useState<string | null>(dbUser?.photoUrl || user?.picture || null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const router = useRouter();
 
@@ -26,9 +26,9 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
     } = useForm<TutorRegistrationInput>({
         resolver: zodResolver(TutorRegistrationSchema) as any,
         defaultValues: {
-            fullName: user?.name || '',
-            email: user?.email || '',
-            photo: user?.picture ? 'valid' : '',
+            fullName: dbUser?.fullName || user?.name || '',
+            email: dbUser?.email || user?.email || '',
+            photo: (dbUser?.photoUrl || user?.picture) ? 'valid' : '',
         } as any,
     });
 
@@ -60,13 +60,13 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
         setServerError(null);
 
         try {
-            if (!selectedFile && !user?.picture) {
+            if (!selectedFile && !dbUser?.photoUrl && !user?.picture) {
                 setServerError('Please upload a profile photo.');
                 setIsSubmitting(false);
                 return;
             }
 
-            const photoUrl = selectedFile ? await uploadToCloudinary(selectedFile) : user.picture;
+            const photoUrl = selectedFile ? await uploadToCloudinary(selectedFile) : (dbUser?.photoUrl || user.picture);
 
             const formData = new FormData();
             Object.entries(data).forEach(([key, value]) => {
@@ -100,7 +100,7 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
     };
 
     const inputBase =
-        'mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base focus:border-brand-500 focus:ring-2 focus:ring-brand-200';
+        'mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-colors duration-200';
 
     return (
         <div className="max-w-xl mx-auto px-4 pb-32">
@@ -231,11 +231,11 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
                         </select>
                         {watch('classRange') === 'Degree/Other' && (
                             <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <label className="text-xs font-semibold text-brand-600 mb-1 uppercase tracking-wider">Specify Range</label>
+                                <label className="text-xs font-semibold text-indigo-600 mb-1 uppercase tracking-wider">Specify Range</label>
                                 <input 
                                     {...register('customRange')} 
                                     placeholder="e.g. B.Tech, UPSC, Music" 
-                                    className={`${inputBase} border-brand-200 bg-brand-50/30`} 
+                                    className={`${inputBase} border-indigo-200 bg-indigo-50/30`} 
                                 />
                                 {errors.customRange && (
                                     <p className="text-xs text-red-500 mt-1">{errors.customRange.message}</p>
@@ -289,7 +289,7 @@ export default function TutorRegistrationForm({ user }: { user: any }) {
                         <span className="mr-2">⚠️</span> {serverError}
                     </div>
                 )}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 sm:static sm:border-0 sm:p-0">
+                <div className="mt-8 pt-6 border-t border-gray-100">
                     <button
                         type="submit"
                         onClick={handleSubmit(onSubmit)}
